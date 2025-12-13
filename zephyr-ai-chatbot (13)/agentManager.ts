@@ -1,6 +1,9 @@
-export function generateImageUrl(prompt: string) {
-  return `https://pollinations.ai/p/${encodeURIComponent(prompt)}?width=768&height=768`;
+function imagineImagePrompt(userText: string) {
+  return `A high-quality, realistic illustration of ${userText}, cinematic lighting, detailed, professional`;
 }
+const imaginedPrompt = imagineImagePrompt(userMessage);
+const imageUrl = `https://pollinations.ai/p/${encodeURIComponent(imaginedPrompt)}`;
+
 
 export interface Agent {
   name: string;
