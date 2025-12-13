@@ -273,7 +273,7 @@ const App = () => {
     const lowerCaseInput = messageText.trim().toLowerCase();
 
     // Check for image generation command
-    if (lowerCaseInput.startsWith("/image ")) {
+    if (lowerCaseInput.startsWith("Visio")) {
         const prompt = messageText.trim().substring(7); // remove "/image "
         if (prompt) {
             const imageUrl = generateImageUrl(prompt);
@@ -295,14 +295,14 @@ const App = () => {
     }
     
     if (!imageAttachment) {
-        if (/\b(time|date)\b/.test(lowerCaseInput)) {
+        if (/\b(time now|date today)\b/.test(lowerCaseInput)) {
             const responseText = `The current date and time is: ${new Date().toLocaleString()}`;
             setMessages([...newMessages, { role: Role.MODEL, text: responseText }]);
             setLoading(false);
             setProcessingAgent(null);
             return;
         }
-        if (/\b(creator|created|made)\b/.test(lowerCaseInput) && !lowerCaseInput.includes("quantum coders")) {
+        if (/\b(Who is your creator| Who created you|Who made you|who trained you|who developed you)\b/.test(lowerCaseInput) && !lowerCaseInput.includes("quantum coders")) {
             const responseText = "I was created by Mohammad Rayyan Ali.";
             setMessages([...newMessages, { role: Role.MODEL, text: responseText }]);
             setLoading(false);
@@ -514,7 +514,7 @@ const App = () => {
                     <button onClick={() => handleSuggestionClick("Who are Quantum coders?")} className="px-5 py-2.5 rounded-full bg-gray-50 dark:bg-gray-800 border border-gray-200 dark:border-gray-700 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors text-sm font-medium">
                         Who are Quantum coders?
                     </button>
-                    <button onClick={() => handleSuggestionClick("/image A futuristic city with flying cars")} className="px-5 py-2.5 rounded-full bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-800 hover:bg-purple-100 dark:hover:bg-purple-900/30 transition-colors text-sm font-medium text-purple-700 dark:text-purple-300">
+                    <button onClick={() => handleSuggestionClick("Visio A futuristic city with flying cars")} className="px-5 py-2.5 rounded-full bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-800 hover:bg-purple-100 dark:hover:bg-purple-900/30 transition-colors text-sm font-medium text-purple-700 dark:text-purple-300">
                         Generate Image
                     </button>
                 </div>
@@ -581,7 +581,7 @@ const App = () => {
                             <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></div>
                         </div>
                         <p className="text-xs text-gray-400 mt-2 font-medium">
-                            {processingAgent ? `${processingAgent} is processing...` : 'Zephyr is thinking...'}
+                            {processingAgent ? `${processingAgent} is processing...` : 'Zephyr is Thinking...'}
                         </p>
                     </div>
                     </div>
@@ -623,7 +623,7 @@ const App = () => {
               type="text"
               value={input}
               onChange={(e) => setInput(e.target.value)}
-              placeholder="Message Zephyr... (or type /image [prompt])"
+              placeholder="Ask Zephyr Anything...."
               className="w-full bg-gray-100 dark:bg-gray-800 text-black dark:text-white rounded-full py-3 px-5 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all"
             />
             
@@ -651,7 +651,7 @@ const App = () => {
           </form>
           
           <div className="mt-2 text-center text-xs text-gray-400">
-             Zephyr may produce inaccurate information. Type /image to generate images.
+             Zephyr may produce inaccurate information. Start your prompt with "Visio" to generate images.
           </div>
         </div>
       </div>
