@@ -1,6 +1,7 @@
+
 import React, { useState, useCallback, useEffect } from 'react';
 import { AspectRatio, GeneratedImage, GenerationState } from './types';
-import { GeminiService } from './services/geminiService'; // Assuming this service handles the API call
+import { GeminiService } from './services/geminiService';
 import HistoryGrid from './components/HistoryGrid';
 
 const ASPECT_RATIOS: AspectRatio[] = ["1:1", "3:4", "4:3", "9:16", "16:9"];
@@ -15,40 +16,31 @@ const App: React.FC = () => {
     history: []
   });
 
-  // Destructure state for cleaner access in JSX
-  const { isGenerating, error, currentImage, history } = state;
-
   // Load history from localStorage on mount
   useEffect(() => {
     const saved = localStorage.getItem('dreamflash_history');
     if (saved) {
       try {
-        const parsedHistory = JSON.parse(saved);
-        // Basic validation for parsed data structure
-        if (Array.isArray(parsedHistory) && parsedHistory.every(item => item.id && item.url && item.prompt)) {
-          setState(prev => ({ ...prev, history: parsedHistory }));
-        } else {
-          console.warn("Invalid history format found in localStorage.");
-        }
+        setState(prev => ({ ...prev, history: JSON.parse(saved) }));
       } catch (e) {
-        console.error("Failed to parse history from localStorage", e);
+        console.error("Failed to parse history", e);
       }
     }
   }, []);
 
   // Save history to localStorage whenever it changes
   useEffect(() => {
-    localStorage.setItem('dreamflash_history', JSON.stringify(history));
-  }, [history]); // Depend on the destructured history
+    localStorage.setItem('dreamflash_history', JSON.stringify(state.history));
+  }, [state.history]);
 
-  const handleGenerate = useCallback(async () => {
+  const handleGenerate = async () => {
     if (!prompt.trim()) return;
 
     setState(prev => ({ ...prev, isGenerating: true, error: null }));
 
     try {
       const url = await GeminiService.generateImage(prompt, aspectRatio);
-
+      
       const newImage: GeneratedImage = {
         id: Math.random().toString(36).substring(7),
         url,
@@ -63,52 +55,29 @@ const App: React.FC = () => {
         currentImage: url,
         history: [newImage, ...prev.history].slice(0, 20) // Keep last 20
       }));
-    } catch (apiError: any) {
-      let errorMessage = "Failed to generate image. Please try again.";
-      // Attempt to parse specific API error messages for better user feedback
-      try {
-        // Assuming GeminiService throws an error object that might contain JSON in its message
-        const parsedError = JSON.parse(apiError.message);
-        if (parsedError && parsedError.error && parsedError.error.code === 429) {
-          errorMessage = "Quota Exceeded: You've made too many requests. Please wait and try again.";
-          const retryInfo = parsedError.error.details?.find(
-            (detail: any) => detail['@type'] === 'type.googleapis.com/google.rpc.RetryInfo'
-          );
-          if (retryInfo && retryInfo.retryDelay) {
-            const delaySeconds = parseFloat(retryInfo.retryDelay.replace('s', ''));
-            errorMessage += ` You can retry in approximately ${Math.ceil(delaySeconds)} seconds.`;
-          }
-        } else if (parsedError && parsedError.error && parsedError.error.message) {
-          // If a specific error message is provided by the API
-          errorMessage = `API Error: ${parsedError.error.message}`;
-        }
-      } catch (parseError) {
-        // If the error message isn't a parseable JSON, use it as is
-        errorMessage = apiError.message || errorMessage;
-      }
-
+    } catch (error: any) {
       setState(prev => ({
         ...prev,
         isGenerating: false,
-        error: errorMessage
+        error: error.message || "Failed to generate image"
       }));
     }
-  }, [prompt, aspectRatio]); // Dependencies for useCallback
+  };
 
-  const handleDownload = useCallback(() => {
-    if (!currentImage) return;
+  const handleDownload = () => {
+    if (!state.currentImage) return;
     const link = document.createElement('a');
-    link.href = currentImage;
+    link.href = state.currentImage;
     link.download = `dreamflash-${Date.now()}.png`;
     link.click();
-  }, [currentImage]); // Dependency for useCallback
+  };
 
-  const handleSelectHistory = useCallback((image: GeneratedImage) => {
+  const handleSelectHistory = (image: GeneratedImage) => {
     setState(prev => ({ ...prev, currentImage: image.url }));
     setPrompt(image.prompt);
     setAspectRatio(image.aspectRatio);
     window.scrollTo({ top: 0, behavior: 'smooth' });
-  }, []); // No dependencies as it uses arguments directly
+  };
 
   return (
     <div className="min-h-screen flex flex-col items-center p-4 md:p-8">
@@ -129,20 +98,18 @@ const App: React.FC = () => {
         {/* Left Column: Input Controls */}
         <section className="glass rounded-3xl p-6 md:p-8 space-y-6">
           <div>
-            <label htmlFor="prompt-textarea" className="block text-sm font-medium text-slate-300 mb-2">Prompt</label>
+            <label className="block text-sm font-medium text-slate-300 mb-2">Prompt</label>
             <textarea
-              id="prompt-textarea"
               value={prompt}
               onChange={(e) => setPrompt(e.target.value)}
               placeholder="A futuristic cyber-city at sunset with flying vehicles and neon lights..."
               className="w-full h-32 bg-slate-900/50 border border-slate-700 rounded-2xl p-4 text-white placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-blue-500/50 resize-none transition-all"
-              aria-label="Enter your image generation prompt"
             />
           </div>
 
           <div>
             <label className="block text-sm font-medium text-slate-300 mb-2">Aspect Ratio</label>
-            <div role="group" aria-label="Select aspect ratio" className="flex flex-wrap gap-2">
+            <div className="flex flex-wrap gap-2">
               {ASPECT_RATIOS.map((ratio) => (
                 <button
                   key={ratio}
@@ -152,8 +119,6 @@ const App: React.FC = () => {
                       ? "bg-blue-600 border-blue-400 text-white shadow-lg shadow-blue-500/20"
                       : "bg-slate-800 border-slate-700 text-slate-400 hover:border-slate-500"
                   }`}
-                  aria-pressed={aspectRatio === ratio}
-                  aria-label={`Select ${ratio} aspect ratio`}
                 >
                   {ratio}
                 </button>
@@ -163,15 +128,14 @@ const App: React.FC = () => {
 
           <button
             onClick={handleGenerate}
-            disabled={isGenerating || !prompt.trim()}
+            disabled={state.isGenerating || !prompt.trim()}
             className={`w-full py-4 rounded-2xl font-bold text-lg flex items-center justify-center gap-3 transition-all ${
-              isGenerating || !prompt.trim()
+              state.isGenerating || !prompt.trim()
                 ? "bg-slate-800 text-slate-500 cursor-not-allowed"
                 : "bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-500 hover:to-purple-500 text-white shadow-xl shadow-blue-500/20 active:scale-[0.98]"
             }`}
-            aria-label={isGenerating ? "Image generation in progress" : "Generate Image"}
           >
-            {isGenerating ? (
+            {state.isGenerating ? (
               <>
                 <svg className="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
                   <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
@@ -187,12 +151,9 @@ const App: React.FC = () => {
             )}
           </button>
 
-          {error && (
-            <div
-              className="bg-red-500/10 border border-red-500/20 text-red-400 p-4 rounded-xl text-sm"
-              role="alert"
-            >
-              {error}
+          {state.error && (
+            <div className="bg-red-500/10 border border-red-500/20 text-red-400 p-4 rounded-xl text-sm">
+              {state.error}
             </div>
           )}
         </section>
@@ -200,7 +161,7 @@ const App: React.FC = () => {
         {/* Right Column: Display Area */}
         <section className="relative min-h-[400px] flex items-center justify-center">
           <div className="w-full glass rounded-3xl overflow-hidden p-4 shadow-2xl relative">
-            {!currentImage && !isGenerating ? (
+            {!state.currentImage && !state.isGenerating ? (
               <div className="h-[400px] flex flex-col items-center justify-center text-slate-500 text-center px-8">
                 <div className="w-16 h-16 mb-4 rounded-2xl bg-slate-800 flex items-center justify-center">
                   <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect width="18" height="18" x="3" y="3" rx="2" ry="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-3.086-3.086a2 2 0 0 0-2.828 0L6 21"/></svg>
@@ -211,30 +172,29 @@ const App: React.FC = () => {
             ) : (
               <div className="relative group">
                 <img
-                  src={currentImage || ''}
-                  alt="Generated AI art" // Descriptive alt text
+                  src={state.currentImage || ''}
+                  alt="Generated"
                   className={`w-full h-auto rounded-2xl object-contain transition-all duration-700 max-h-[70vh] ${
-                    isGenerating ? "blur-md opacity-50 scale-95" : "blur-0 opacity-100 scale-100"
+                    state.isGenerating ? "blur-md opacity-50 scale-95" : "blur-0 opacity-100 scale-100"
                   }`}
                 />
-
-                {isGenerating && (
+                
+                {state.isGenerating && (
                   <div className="absolute inset-0 flex flex-col items-center justify-center space-y-4">
-                    <div className="relative w-20 h-20">
-                      <div className="absolute inset-0 border-4 border-blue-500/20 rounded-full"></div>
-                      <div className="absolute inset-0 border-4 border-blue-500 rounded-full border-t-transparent animate-spin"></div>
-                    </div>
-                    <p className="text-white font-medium animate-pulse">Analyzing prompt...</p>
+                     <div className="relative w-20 h-20">
+                        <div className="absolute inset-0 border-4 border-blue-500/20 rounded-full"></div>
+                        <div className="absolute inset-0 border-4 border-blue-500 rounded-full border-t-transparent animate-spin"></div>
+                     </div>
+                     <p className="text-white font-medium animate-pulse">Analyzing prompt...</p>
                   </div>
                 )}
 
-                {currentImage && !isGenerating && (
+                {state.currentImage && !state.isGenerating && (
                   <div className="absolute bottom-4 right-4 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                     <button
                       onClick={handleDownload}
                       className="bg-white/10 hover:bg-white/20 backdrop-blur-md text-white p-3 rounded-xl transition-all"
                       title="Download Image"
-                      aria-label="Download generated image"
                     >
                       <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></svg>
                     </button>
@@ -246,7 +206,7 @@ const App: React.FC = () => {
         </section>
       </main>
 
-      <HistoryGrid images={history} onSelect={handleSelectHistory} />
+      <HistoryGrid images={state.history} onSelect={handleSelectHistory} />
 
       <footer className="mt-20 py-10 border-t border-slate-800 w-full text-center text-slate-500 text-sm">
         <p>© {new Date().getFullYear()} DreamFlash AI. Powered by Google Gemini 2.5 Flash.</p>
@@ -261,5 +221,3 @@ const App: React.FC = () => {
 };
 
 export default App;
-
-
