@@ -1,0 +1,5 @@
+{
+  "name": "WhatsAi Assistant",
+  "description": "A smart AI reply assistant that learns your writing style and generates contextual WhatsApp responses in your personal voice.",
+  "requestFramePermissions": []
+}
